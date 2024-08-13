@@ -1,15 +1,19 @@
 const express = require('express');
-const mysql = require('mysql'); // Import the MySQL module
+const mysql = require('mysql2'); // Import the MySQL module
 const app = express();
 const port = 3000; // Choose a port
 require('dotenv').config(); // Load environment variables from .env
 
-const connection = mysql.createConnection({
+const connection = mysql.createConnection(process.env.DATABASE_URL);
+
+
+
+/*const connection = mysql.createConnection({
     host: process.env.DATABASE_HOST,
     user: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
     database: process.env.DATABASE_NAME
-});
+});*/
 
 // Parse JSON bodies
 app.use(express.json());
