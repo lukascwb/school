@@ -2,18 +2,27 @@ const express = require('express');
 const mysql = require('mysql2'); // Import the MySQL module
 const app = express();
 const port = 3000; // Choose a port
+//const connection = require('./database');
 require('dotenv').config(); // Load environment variables from .env
 
 const connection = mysql.createConnection(process.env.DATABASE_URL);
 
+// const connection = mysql.createConnection({
+//     host: process.env.DATABASE_HOST,
+//     user: process.env.DATABASE_USER,
+//     password: process.env.DATABASE_PASSWORD,
+//     database: process.env.DATABASE_NAME
+// });
+
+connection.connect(err => {
+    if (err) {
+        console.error('Error connecting to MySQL database:', err);
+        return;
+    }
+    console.log('Connected to MySQL database!');
+});
 
 
-/*const connection = mysql.createConnection({
-    host: process.env.DATABASE_HOST,
-    user: process.env.DATABASE_USER,
-    password: process.env.DATABASE_PASSWORD,
-    database: process.env.DATABASE_NAME
-});*/
 
 // Parse JSON bodies
 app.use(express.json());
@@ -23,13 +32,12 @@ app.use(express.urlencoded({
     extended: true
 }));
 
-connection.connect(err => {
-    if (err) {
-        console.error('Error connecting to MySQL database:', err);
-        return;
-    }
-    console.log('Connected to MySQL database!');
+
+// Route to serve alunos.html
+app.get('/', (req, res) => {
+    res.redirect("/students");
 });
+
 
 // Route to serve alunos.html
 app.get('/students', (req, res) => {
