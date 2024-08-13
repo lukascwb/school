@@ -1,76 +1,76 @@
 const express = require('express');
-const mysql = require('mysql2'); // Import the MySQL module
+const mysql = require('mysql2');
 const app = express();
-const port = 3000; // Choose a port
-//const connection = require('./database');
-require('dotenv').config(); // Load environment variables from .env
+const port = process.env.PORT || 3000;
+require('dotenv').config();
 
-const connection = mysql.createConnection(process.env.DATABASE_URL);
-
-// const connection = mysql.createConnection({
+// Define the Student model using Sequelize
+const Sequelize = require('sequelize');
+// const sequelize = new Sequelize(process.env.DATABASE_NAME, process.env.DATABASE_USER, process.env.DATABASE_PASSWORD, {
 //     host: process.env.DATABASE_HOST,
-//     user: process.env.DATABASE_USER,
-//     password: process.env.DATABASE_PASSWORD,
-//     database: process.env.DATABASE_NAME
+//     dialect: 'mysql',
+//     logging: true // You can uncomment this for debugging
 // });
 
-connection.connect(err => {
-    if (err) {
-        console.error('Error connecting to MySQL database:', err);
-        return;
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: 'mysql',
+    logging: false // You can uncomment this for debugging
+    });
+
+const Student = sequelize.define('Student', {
+    id: {
+        type: Sequelize.INTEGER,
+        autoIncrement: true,
+        primaryKey: true
+    },
+    name: {
+        type: Sequelize.STRING,
+        allowNull: false
+    },
+    age: {
+        type: Sequelize.INTEGER,
+        allowNull: false
     }
-    console.log('Connected to MySQL database!');
 });
 
+// Test database connection
 
 
-// Parse JSON bodies
+// Middleware to parse JSON and URL-encoded bodies
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Parse URL-encoded bodies
-app.use(express.urlencoded({
-    extended: true
-}));
-
-
-// Route to serve alunos.html
+// Routes
 app.get('/', (req, res) => {
     res.redirect("/students");
 });
 
-
-// Route to serve alunos.html
 app.get('/students', (req, res) => {
     res.sendFile(__dirname + '/alunos.html');
 });
 
-
-// Route to fetch students from the database
-app.get('/api/students', (req, res) => {
-    connection.query('SELECT * FROM students', (err, results, fields) => {
-        if (err) {
-            console.error('Error executing query:', err);
-            res.status(500).send('Error fetching students');
-            return;
-        }
-        res.json(results);
-    });
+app.get('/api/students', async (req, res) => {
+    try {
+        const students = await Student.findAll();
+        res.json(students);
+    } catch (err) {
+        console.error('Error fetching students:', err);
+        res.status(500).send('Error fetching students');
+    }
 });
 
-// Route to add a new student (POST request)
-app.post('/api/students', (req, res) => {
-    const { name, age } = req.body; // Destructure directly
+app.post('/api/students', async (req, res) => {
+    const { name, age } = req.body;
 
     if (name && age) {
-        connection.query('INSERT INTO students (name, age) VALUES (?, ?)', [name, age], (err, result) => {
-            if (err) {
-                console.error('Error adding student:', err);
-                res.status(500).send('Error adding student');
-                return;
-            }
-            console.log('Student added successfully');
+        try {
+            const newStudent = await Student.create({ name, age });
+            console.log('Student added successfully:', newStudent);
             res.status(201).send('Student added successfully');
-        });
+        } catch (err) {
+            console.error('Error adding student:', err);
+            res.status(500).send('Error adding student');
+        }
     } else {
         res.status(400).send('Missing name or age');
     }
@@ -81,13 +81,26 @@ app.listen(port, () => {
     console.log(`Server listening at http://localhost:${port}`);
 });
 
-// Close the connection when the server shuts down
 process.on('SIGINT', () => {
-    connection.end(err => {
-        if (err) {
+    sequelize.close()
+        .then(() => {
+            console.log('MySQL connection closed.');
+            process.exit(0);
+        })
+        .catch(err => {
             console.error('Error closing MySQL connection:', err);
-        }
-        console.log('MySQL connection closed.');
-        process.exit(0);
-    });
+        });
 });
+
+
+(async () => {
+    try {
+        await sequelize.authenticate();
+        console.log('Connection has been established successfully.');
+        await sequelize.sync({ force: true }); // force
+        //await sequelize.sync();
+    } catch (error) {
+        console.error('Unable to connect to the database:', error);
+        // Handle the error as needed
+    }
+})();
